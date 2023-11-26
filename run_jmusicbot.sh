@@ -7,6 +7,8 @@ RELEASE_URL="https://api.github.com/repos/jagrosh/MusicBot/releases/latest"
 DOWNLOAD=true
 LOOP=false
 DOCKERIZE=true
+PATH_OF_SCRIPT=$0
+DIR_PATH=$(dirname "$PATH_OF_SCRIPT")
 
 check_dependencies() {
     for cmd in docker curl jq; do
@@ -25,6 +27,7 @@ check_docker_running() {
 }
 
 stop_container() {
+    echo "Stopping JMusicBot..."
     local _stopped=false
     local _removed=false
 
@@ -48,9 +51,11 @@ stop_container() {
 }
 
 launch_container() {
+    echo "Launching JMusicBot..."
     if ! docker images | grep -qw jmusicbot; then
         echo "Building jmusicbot Docker image..."
-        if ! docker build --build-arg JMUSICBOT_VERSION="$JMUSICBOT_VERSION" -t jmusicbot . >/dev/null 2>&1; then
+        echo "Building image from directory: $DIR_PATH"
+        if ! docker build --build-arg JMUSICBOT_VERSION="$JMUSICBOT_VERSION" -t jmusicbot $DIR_PATH >/dev/null 2>&1; then
             echo "Failed to build jmusicbot Docker image." >&2
             exit 1
         fi
@@ -78,9 +83,9 @@ download_latest_release() {
         # Extract the version from the URL
         JMUSICBOT_VERSION=$(echo "$URL" | grep -oP 'JMusicBot-\K[\d\.]+(?=\.jar)')
         FILENAME=$(basename "$URL")
-        if [ ! -f "$FILENAME" ]; then
+        if [ ! -f "$DIR_PATH/$FILENAME" ]; then
             echo "Downloading latest version: $FILENAME"
-            if ! curl -L "$URL" -o "$FILENAME"; then
+            if ! curl -L "$URL" -o "$DIR_PATH/$FILENAME"; then
                 echo "Failed to download $FILENAME" >&2
                 exit 1
             fi
@@ -92,7 +97,7 @@ download_latest_release() {
 }
 
 run_bot() {
-    JAVA_CMD=$(find . -name "JMusicBot*.jar" -print | head -1)
+    JAVA_CMD=$(find $DIR_PATH -name "JMusicBot*.jar" -print | head -1)
     if [ -z "$JAVA_CMD" ]; then
         echo "No JMusicBot jar found." >&2
         exit 1
